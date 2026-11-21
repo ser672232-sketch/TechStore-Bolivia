@@ -1,0 +1,22 @@
+(function () {
+    const KEY = 'techstore_demo_products_v1', URLKEY = 'techstore_api_url_v1';
+    const sample = [
+        { nombre: 'Teclado Mecánico RGB', descripcion: 'Teclado gamer con iluminación RGB y conexión USB.', categoria: 'Teclados', precio: 250, stock: 10, imagen: 'https://images.unsplash.com/photo-1595225476474-87563907a212?w=700' },
+        { nombre: 'Mouse Gamer Óptico', descripcion: 'Mouse ergonómico de alta precisión.', categoria: 'Mouse', precio: 120, stock: 15, imagen: 'https://images.unsplash.com/photo-1527814050087-3793815479db?w=700' },
+        { nombre: 'Audífonos Inalámbricos', descripcion: 'Audio envolvente y batería de larga duración.', categoria: 'Audio', precio: 290, stock: 8, imagen: 'https://images.unsplash.com/photo-1505740420928-5e560c06d30e?w=700' },
+        { nombre: 'Monitor Full HD', descripcion: 'Monitor para estudio, trabajo y entretenimiento.', categoria: 'Monitores', precio: 1150, stock: 5, imagen: 'https://images.unsplash.com/photo-1527443224154-c4a3942d3acf?w=700' },
+        { nombre: 'Webcam HD', descripcion: 'Cámara USB para videollamadas y clases.', categoria: 'Accesorios', precio: 190, stock: 12, imagen: 'https://images.unsplash.com/photo-1587825140708-dfaf72ae4b04?w=700' },
+        { nombre: 'Parlante Bluetooth', descripcion: 'Parlante portátil con conexión inalámbrica.', categoria: 'Audio', precio: 210, stock: 7, imagen: 'https://images.unsplash.com/photo-1608043152269-423dbba4e7e1?w=700' },
+        { nombre: 'SSD 512 GB', descripcion: 'Almacenamiento rápido para tu computadora.', categoria: 'Componentes', precio: 380, stock: 9, imagen: 'https://images.unsplash.com/photo-1531492746076-161ca9bcad58?w=700' },
+        { nombre: 'Hub USB-C', descripcion: 'Adaptador multipuerto para laptop.', categoria: 'Accesorios', precio: 145, stock: 20, imagen: 'https://images.unsplash.com/photo-1625948515291-69613efd103f?w=700' }];
+    function demoRead() { let data = localStorage.getItem(KEY); if (!data) { data = sample.map((p, i) => ({ ...p, id: String(i + 1) })); localStorage.setItem(KEY, JSON.stringify(data)); return data } try { return JSON.parse(data) } catch { return [] } }
+    function url() { return (window.TECHSTORE_CONFIG.API_URL || localStorage.getItem(URLKEY) || '').trim().replace(/\/+$/, '') }
+    function validateUrl(value) { if (!value) return true; try { let u = new URL(value); return u.protocol === 'https:' && /\.mockapi\.io$/i.test(u.hostname) && u.pathname.split('/').filter(Boolean).length >= 1 } catch { return false } }
+    async function request(method, path = '', body) { let endpoint = url(); if (!endpoint) throw Error('Configura MockAPI para operar en línea.'); let response; try { response = await fetch(endpoint + path, { method, headers: { 'Content-Type': 'application/json' }, ...(body ? { body: JSON.stringify(body) } : {}) }) } catch { throw Error('No se pudo conectar con MockAPI. Revisa la URL y tu conexión.') } if (!response.ok) throw Error('MockAPI respondió con error ' + response.status + '. Revisa el recurso y sus campos.'); if (response.status === 204) return null; return response.json() }
+    async function list() { return url() ? await request('GET') : demoRead() }
+    async function create(item) { if (url()) return request('POST', '', item); let rows = demoRead(), id = String(Math.max(0, ...rows.map(x => Number(x.id) || 0)) + 1); rows.push({ ...item, id }); localStorage.setItem(KEY, JSON.stringify(rows)); return { ...item, id } }
+    async function update(id, item) { if (url()) return request('PUT', '/' + encodeURIComponent(id), item); let rows = demoRead(), i = rows.findIndex(x => String(x.id) === String(id)); if (i < 0) throw Error('Producto no encontrado'); rows[i] = { ...rows[i], ...item }; localStorage.setItem(KEY, JSON.stringify(rows)); return rows[i] }
+    async function remove(id) { if (url()) return request('DELETE', '/' + encodeURIComponent(id)); let rows = demoRead(); if (!rows.some(x => String(x.id) === String(id))) throw Error('Producto no encontrado'); localStorage.setItem(KEY, JSON.stringify(rows.filter(x => String(x.id) !== String(id)))) }
+    async function get(id) { if (url()) return request('GET', '/' + encodeURIComponent(id)); let row = demoRead().find(x => String(x.id) === String(id)); if (!row) throw Error('Producto no encontrado'); return row }
+    window.StoreAPI = { list, create, update, remove, get, url, validateUrl, setUrl(value) { if (value) localStorage.setItem(URLKEY, value); else localStorage.removeItem(URLKEY) }, isDemo() { return !url() } };
+})();
